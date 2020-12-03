@@ -326,7 +326,7 @@ namespace Speckle.ConnectorRevit.UI
         {
           t.Start();
 
-          var newPlaceholderObjects = HandleAndConvertToNative(commitObject, converter);
+          var newPlaceholderObjects = HandleAndConvertToNative(commitObject, converter, state);
 
           foreach (var obj in state.ReceivedObjects)
           {
@@ -375,7 +375,7 @@ namespace Speckle.ConnectorRevit.UI
     /// <param name="obj"></param>
     /// <param name="converter"></param>
     /// <returns></returns>
-    private List<ApplicationPlaceholderObject> HandleAndConvertToNative(object obj, ISpeckleConverter converter)
+    private List<ApplicationPlaceholderObject> HandleAndConvertToNative(object obj, ISpeckleConverter converter, StreamState state)
     {
       HashSet<string> appIds = new HashSet<string>();
       List<Base> objects = new List<Base>();
@@ -391,31 +391,38 @@ namespace Speckle.ConnectorRevit.UI
 
         objects.Add(baseItem);
 
-        // --> return a list of ApplicationPlaceholderObject so we can do deletion afterwards
-        var convRes = converter.ConvertToNative(baseItem);
-        if (convRes is ApplicationPlaceholderObject placeholder)
+        try
         {
-          placeholders.Add(placeholder);
-        }
-        else if (convRes is List<ApplicationPlaceholderObject> placeholderList)
-        {
-          placeholders.AddRange(placeholderList);
-        }
+          // --> return a list of ApplicationPlaceholderObject so we can do deletion afterwards
+          var convRes = converter.ConvertToNative(baseItem);
+          if (convRes is ApplicationPlaceholderObject placeholder)
+          {
+            placeholders.Add(placeholder);
+          }
+          else if (convRes is List<ApplicationPlaceholderObject> placeholderList)
+          {
+            placeholders.AddRange(placeholderList);
+          }
 
-        foreach (var prop in baseItem.GetDynamicMembers())
-        {
-          //if (converter.CanConvertToNative(baseItem[prop] as Base))
-          placeholders.AddRange(HandleAndConvertToNative(baseItem[prop], converter));
-        }
+          foreach (var prop in baseItem.GetDynamicMembers())
+          {
+            //if (converter.CanConvertToNative(baseItem[prop] as Base))
+            placeholders.AddRange(HandleAndConvertToNative(baseItem[prop], converter, state));
+          }
 
-        return placeholders;
+          return placeholders;
+        }
+        catch (Exception e)
+        {
+          state.Errors.Add(e);
+        }
       }
 
       if (obj is List<object> list)
       {
         foreach (var listObj in list)
         {
-          placeholders.AddRange(HandleAndConvertToNative(listObj, converter));
+          placeholders.AddRange(HandleAndConvertToNative(listObj, converter, state));
         }
         return placeholders;
       }
@@ -424,7 +431,7 @@ namespace Speckle.ConnectorRevit.UI
       {
         foreach (DictionaryEntry kvp in dict)
         {
-          placeholders.AddRange(HandleAndConvertToNative(kvp.Value, converter));
+          placeholders.AddRange(HandleAndConvertToNative(kvp.Value, converter, state));
         }
         return placeholders;
       }
