@@ -137,6 +137,7 @@ jobs:
           root: ./
           paths:
             - ConnectorDynamo/ConnectorDynamo/dist
+            
   build-installer-dynamo:
     executor:
       name: win/default
