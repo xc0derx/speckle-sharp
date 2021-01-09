@@ -324,7 +324,7 @@ workflows:
             tags:
               only: /^dynamo.*/
       - build-installer-dynamo:
-        requires:
+          requires:
             - build-connector-dynamo
       - deploy:
           requires:
