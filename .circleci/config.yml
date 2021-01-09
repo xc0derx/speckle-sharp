@@ -7,6 +7,8 @@ orbs:
   jq: circleci/jq@2.2.0
   # Using windows for builds
   win: circleci/windows@2.2.0
+  # Upload artifacts to s3
+  aws-s3: circleci/aws-s3@2.0.0
 
 
 # Parameters of our pipeline. Most of them are booleans that indicate which project to build/test with the pattern 'run_{PROJECT_NAME}'
@@ -126,8 +128,33 @@ jobs:
           name: Restore Dynamo Connector
           command: nuget restore ConnectorDynamo/ConnectorDynamo.sln
       - run: 
-          name: Build Dynamo Connector
-          command: msbuild ConnectorDynamo/ConnectorDynamo.sln
+          name: Build Dynamo Sandbox Connector
+          command: msbuild ConnectorDynamo/ConnectorDynamo/ConnectorDynamo.csproj /p:Configuration=ReleaseSandbox /p:WarningLevel=0
+      - run: 
+          name: Build Dynamo Revit Connector
+          command: msbuild ConnectorDynamo/ConnectorDynamo/ConnectorDynamo.csproj /p:Configuration=ReleaseRevit /p:WarningLevel=0
+      - run: 
+          name: Run Installer
+          command: InnoSetup/ISCC.exe ConnectorDynamo/Installer.iss
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - Installers
+      - store_artifacts:
+          path: Installers/Speckle for Dynamo Setup.exe
+  deploy:
+    docker:
+      - image: cimg/base:2021.01
+    steps:    
+      - attach_workspace:
+          at: ./
+      - aws-s3/copy:
+          arguments: '--recursive --endpoint=https://ams3.digitaloceanspaces.com'
+          aws-access-key-id: SPACES_KEY
+          aws-region: SPACES_REGION
+          aws-secret-access-key: SPACES_SECRET
+          from: '"Installers/"'
+          to: s3://speckle-releases/installers/
   build-connector-revit:
     executor:
       name: win/default
@@ -265,6 +292,9 @@ workflows:
     when: << pipeline.parameters.run_connector_dynamo >>
     jobs:
       - build-connector-dynamo
+      - deploy:
+          requires:
+            - "build-connector-dynamo"
   
   # Revit Connector - Build/Test
   connector_revit:
