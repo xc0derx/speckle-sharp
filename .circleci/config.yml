@@ -135,7 +135,7 @@ jobs:
           command: msbuild ConnectorDynamo/ConnectorDynamo/ConnectorDynamo.csproj /p:Configuration=ReleaseRevit /p:WarningLevel=0
       - run:
           name: Patch Assembly
-          command: Build/Patch/Patcher.exe ConnectorDynamo/ConnectorDynamo/dist/ SpeckleConnectorDynamo.exe $env:CIRCLE_TAG.replace("dynamo/","")
+          command: Build/Patch/Patcher.exe ConnectorDynamo/ConnectorDynamo/dist/ SpeckleConnectorDynamo.dll $env:CIRCLE_TAG.replace("dynamo/","")
       - run: 
           name: Run Installer
           command: Build/InnoSetup/ISCC.exe ConnectorDynamo/Installer.iss
@@ -243,7 +243,7 @@ jobs:
       - attach_workspace:
           at: ./
       - aws-s3/copy:
-          arguments: '--recursive --endpoint=https://ams3.digitaloceanspaces.com'
+          arguments: '--recursive --endpoint=https://$SPACES_REGION.digitaloceanspaces.com'
           aws-access-key-id: SPACES_KEY
           aws-region: SPACES_REGION
           aws-secret-access-key: SPACES_SECRET
@@ -258,7 +258,10 @@ workflows:
   ci:
     when: << pipeline.parameters.run_trigger_workflow >>
     jobs:
-      - selective-ci
+      - selective-ci:
+          filters: # Only run on branches
+            tags:
+              ignore: /.*/
   # Objects - Build/Test
   objects:
     when: << pipeline.parameters.run_objects >>
