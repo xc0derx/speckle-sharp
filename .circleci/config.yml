@@ -302,11 +302,11 @@ workflows:
   # Deployment
   deploy:
     jobs:
-      - build-connector-dynamo
-        filters:
-          tags:
-            only: /^dynamo.*/
-      - deploy
-        requires:
-          - build-connector-dynamo
+      - build-connector-dynamo:
+          filters:
+            tags:
+              only: /^dynamo.*/
+      - deploy:
+          requires:
+            - build-connector-dynamo
 
