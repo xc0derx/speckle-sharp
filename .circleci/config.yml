@@ -303,6 +303,8 @@ workflows:
     jobs:
       - build-connector-dynamo:
           filters:
+            branches:
+              ignore: /.*/
             tags:
               only: /^dynamo.*/
       - deploy:
