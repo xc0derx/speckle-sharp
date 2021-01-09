@@ -10,7 +10,7 @@ namespace Patcher
 {
   class Patcher
   {
-    const string verpatch = "verpatch.exe";
+    private static string verpatch = "verpatch.exe";
     static void Main(string[] args)
     {
       if (args.Length != 3)
@@ -20,15 +20,25 @@ namespace Patcher
         return;
       }
 
-      if (!File.Exists(verpatch))
-      {
-        Console.WriteLine("verpatch.exe not found");
-        return;
-      }
-
       var directory = args[0];
       var filename = args[1];
       var version = args[2];
+
+      Console.WriteLine($"Patching {version}");
+
+
+      string fullPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+      string executingDirectory = Path.GetDirectoryName(fullPath);
+
+      verpatch = Path.Combine(executingDirectory, verpatch);
+
+      if (!File.Exists(verpatch))
+      {
+        Console.WriteLine($"{verpatch} not found");
+        return;
+      }
+
+
 
       if (!Directory.Exists(directory))
       {

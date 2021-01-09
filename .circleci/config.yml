@@ -138,7 +138,7 @@ jobs:
           command: Build/Patch/Patcher.exe ConnectorDynamo/ConnectorDynamo/dist/ SpeckleConnectorDynamo.exe $env:CIRCLE_TAG.replace("dynamo/","")
       - run: 
           name: Run Installer
-          command: InnoSetup/ISCC.exe ConnectorDynamo/Installer.iss
+          command: Build/InnoSetup/ISCC.exe ConnectorDynamo/Installer.iss
       - persist_to_workspace:
           root: Build/
           paths:
@@ -299,7 +299,7 @@ workflows:
       - build-connector-revit
       
   # Deployment
-  deploy:
+  deployment:
     jobs:
       - build-connector-dynamo:
           filters:
