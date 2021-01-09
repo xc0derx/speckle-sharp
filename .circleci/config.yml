@@ -133,28 +133,18 @@ jobs:
       - run: 
           name: Build Dynamo Revit Connector
           command: msbuild ConnectorDynamo/ConnectorDynamo/ConnectorDynamo.csproj /p:Configuration=ReleaseRevit /p:WarningLevel=0
+      - run:
+          name: Patch Assembly
+          command: Build/Patch/Patcher.exe ConnectorDynamo/ConnectorDynamo/dist/ SpeckleConnectorDynamo.exe $env:CIRCLE_TAG.replace("dynamo/","")
+    steps:
       - run: 
           name: Run Installer
           command: InnoSetup/ISCC.exe ConnectorDynamo/Installer.iss
       - persist_to_workspace:
-          root: ./
+          root: Build/
           paths:
             - Installers
-      - store_artifacts:
-          path: Installers/Speckle for Dynamo Setup.exe
-  deploy:
-    docker:
-      - image: cimg/base:2021.01
-    steps:    
-      - attach_workspace:
-          at: ./
-      - aws-s3/copy:
-          arguments: '--recursive --endpoint=https://ams3.digitaloceanspaces.com'
-          aws-access-key-id: SPACES_KEY
-          aws-region: SPACES_REGION
-          aws-secret-access-key: SPACES_SECRET
-          from: '"Installers/"'
-          to: s3://speckle-releases/installers/
+  
   build-connector-revit:
     executor:
       name: win/default
@@ -246,6 +236,21 @@ jobs:
           working_directory: core
           command: dotnet test Core/IntegrationTests/TestsIntegration.csproj --logger:"Console;noprogress=true"
 
+  # Upload all installers found to S3
+  deploy:
+    docker:
+      - image: cimg/base:2021.01
+    steps:    
+      - attach_workspace:
+          at: ./
+      - aws-s3/copy:
+          arguments: '--recursive --endpoint=https://ams3.digitaloceanspaces.com'
+          aws-access-key-id: SPACES_KEY
+          aws-region: SPACES_REGION
+          aws-secret-access-key: SPACES_SECRET
+          from: '"Installers/"'
+          to: s3://speckle-releases/installers/
+
 # The main workflows for our monorepo pipeline.
 # The main workflow is called 'ci': It is the workflow responsible of determining which projects to build/test.
 # There should be at least one workflow per project in the monorepo. Each workflow should be run only when a boolean parameter is passed that corresponds to the pattern 'run_{PROJECT_NAME}'. These parameters are set by the 'selective-ci' job.
@@ -287,13 +292,21 @@ workflows:
     when: << pipeline.parameters.run_connector_dynamo >>
     jobs:
       - build-connector-dynamo
-      - deploy:
-          requires:
-            - "build-connector-dynamo"
   
   # Revit Connector - Build/Test
   connector_revit:
     when: << pipeline.parameters.run_connector_revit >>
     jobs:
       - build-connector-revit
+      
+  # Deployment
+  deploy:
+    jobs:
+      - build-connector-dynamo
+        filters:
+          tags:
+            only: /^dynamo.*/
+      - deploy
+        requires:
+          - build-connector-dynamo
 

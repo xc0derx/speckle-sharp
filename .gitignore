@@ -362,3 +362,4 @@ ConnectorDynamo/ConnectorDynamo/dist/
 *.3dmbak
 *.rhl
 Build/Installers/
+Installers/
