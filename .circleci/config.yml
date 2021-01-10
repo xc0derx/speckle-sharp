@@ -319,5 +319,10 @@ workflows:
                 paths:
                   - Installers
       - deploy:
+         filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^dynamo.*/
           requires:
             - build-connector-dynamo
