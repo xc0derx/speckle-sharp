@@ -319,7 +319,7 @@ workflows:
                 paths:
                   - Installers
       - deploy:
-         filters:
+          filters:
             branches:
               ignore: /.*/
             tags:
