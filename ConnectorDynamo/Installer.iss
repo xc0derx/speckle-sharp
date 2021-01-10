@@ -1,7 +1,7 @@
 ﻿; ↓↓↓ MAKE SURE TO UPDATE THESE ↓↓↓
 #define Name "Dynamo"
 #define AppName "Speckle for " + Name
-#define AppVersion GetFileVersion("ConnectorDynamo\bin\ReleaseRevit\SpeckleConnectorDynamo.dll")
+#define AppVersion GetFileVersion("ConnectorDynamo\dist\Revit\ConnectorDynamo\bin\SpeckleConnectorDynamo.dll")
 #define AppPublisher "Speckle"
 #define AppURL "https://speckle.systems"
 #define SpeckleFolder "{localappdata}\Speckle\" + Name
