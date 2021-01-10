@@ -133,30 +133,7 @@ jobs:
       - run: 
           name: Build Dynamo Revit Connector
           command: msbuild ConnectorDynamo/ConnectorDynamo/ConnectorDynamo.csproj /p:Configuration=ReleaseRevit /p:WarningLevel=0
-      - persist_to_workspace:
-          root: ./
-          paths:
-            - ConnectorDynamo/ConnectorDynamo/dist
 
-  build-installer-dynamo:
-    executor:
-      name: win/default
-      shell: powershell.exe
-    steps:
-      - attach_workspace:
-          at: ./
-      - run:
-          name: Patch Assembly 
-          command: | #if there is a tag, use it to patch the assembly
-            $version = if([string]::IsNullOrEmpty($env:CIRCLE_TAG)) { "1.0.0.0" } else { $env:CIRCLE_TAG.replace("dynamo/","") } 
-            Build/Patch/Patcher.exe ConnectorDynamo/ConnectorDynamo/dist/ SpeckleConnectorDynamo.dll $version
-      - run: 
-          name: Run Installer
-          command: Build/InnoSetup/ISCC.exe ConnectorDynamo/Installer.iss
-      - persist_to_workspace:
-          root: Build/
-          paths:
-            - Installers
   
   build-connector-revit:
     executor:
@@ -324,10 +301,19 @@ workflows:
               ignore: /.*/
             tags:
               only: /^dynamo.*/
-      - build-installer-dynamo:
-          requires:
-            - build-connector-dynamo
+          post-steps:
+            - run:
+                name: Patch Assembly 
+                command: | #if there is a tag, use it to patch the assembly
+                  $version = if([string]::IsNullOrEmpty($env:CIRCLE_TAG)) { "1.0.0.0" } else { $env:CIRCLE_TAG.replace("dynamo/","") } 
+                  Build/Patch/Patcher.exe ConnectorDynamo/ConnectorDynamo/dist/ SpeckleConnectorDynamo.dll $version
+            - run: 
+                name: Run Installer
+                command: Build/InnoSetup/ISCC.exe ConnectorDynamo/Installer.iss
+            - persist_to_workspace:
+                root: Build/
+                paths:
+                  - Installers
       - deploy:
           requires:
             - build-connector-dynamo
-            - build-installer-dynamo
