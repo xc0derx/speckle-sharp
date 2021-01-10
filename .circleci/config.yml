@@ -7,6 +7,8 @@ orbs:
   jq: circleci/jq@2.2.0
   # Using windows for builds
   win: circleci/windows@2.2.0
+  # Upload artifacts to s3
+  aws-s3: circleci/aws-s3@2.0.0
 
 
 # Parameters of our pipeline. Most of them are booleans that indicate which project to build/test with the pattern 'run_{PROJECT_NAME}'
@@ -47,6 +49,9 @@ jobs:
       - checkout
       - jq/install
       - swissknife/trigger-workflows-for-all-modified:
+          base-branch: master
+          use-divergence-point: true
+          run-mode-for-base-branch: run_for_last_commit
           additional-param-map: '{"run_trigger_workflow": false}'
           code-param-name-map: '[
             {"regex": "Objects/.*", "param_name": "run_objects"},
@@ -126,8 +131,13 @@ jobs:
           name: Restore Dynamo Connector
           command: nuget restore ConnectorDynamo/ConnectorDynamo.sln
       - run: 
-          name: Build Dynamo Connector
-          command: msbuild ConnectorDynamo/ConnectorDynamo.sln
+          name: Build Dynamo Sandbox Connector
+          command: msbuild ConnectorDynamo/ConnectorDynamo/ConnectorDynamo.csproj /p:Configuration=ReleaseSandbox /p:WarningLevel=0
+      - run: 
+          name: Build Dynamo Revit Connector
+          command: msbuild ConnectorDynamo/ConnectorDynamo/ConnectorDynamo.csproj /p:Configuration=ReleaseRevit /p:WarningLevel=0
+
+  
   build-connector-revit:
     executor:
       name: win/default
@@ -219,20 +229,34 @@ jobs:
           working_directory: core
           command: dotnet test Core/IntegrationTests/TestsIntegration.csproj --logger:"Console;noprogress=true"
 
+  # Upload all installers found to S3
+  deploy:
+    docker:
+      - image: cimg/base:2021.01
+    steps:    
+      - attach_workspace:
+          at: ./
+      - aws-s3/copy:
+          arguments: '--recursive --endpoint=https://$SPACES_REGION.digitaloceanspaces.com'
+          aws-access-key-id: SPACES_KEY
+          aws-region: SPACES_REGION
+          aws-secret-access-key: SPACES_SECRET
+          from: '"Installers/"'
+          to: s3://speckle-releases/installers/
+
 # The main workflows for our monorepo pipeline.
 # The main workflow is called 'ci': It is the workflow responsible of determining which projects to build/test.
-# There should be at least one workflow per project in the monorepo. Each workflow should be run only when a boolean parameter is passed that corresponds to the pattern 'run_{PROJECT_NAME}'. These parameters are set by the 'selective-ci' job.
+# There should be at least one workflow per project in the monorepo. Each workflow should be run only when a boolean parameter is passed that corresponds to the pattern 'run_{PROJECT_NAME}'. 
+# These parameters are set by the 'selective-ci' job.
 workflows:
   # Main workflow. Must be conditioned to the 'run_trigger_workflow' parameter to prevent recursive execution of the job.
   ci:
     when: << pipeline.parameters.run_trigger_workflow >>
     jobs:
       - selective-ci:
-          filters:  # using regex filters requires the entire branch to match
-            branches:
-              only:  # only branches matching the below regex filters will run
-                - master
-                - /ci\/.*/
+          filters: # Only run on branches
+            tags:
+              ignore: /.*/
   # Objects - Build/Test
   objects:
     when: << pipeline.parameters.run_objects >>
@@ -271,4 +295,34 @@ workflows:
     when: << pipeline.parameters.run_connector_revit >>
     jobs:
       - build-connector-revit
-
+      
+  # Deployment
+  deployment:
+    jobs:
+      - build-connector-dynamo:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^dynamo.*/
+          post-steps:
+            - run:
+                name: Patch Assembly 
+                command: | #if there is a tag, use it to patch the assembly
+                  $version = if([string]::IsNullOrEmpty($env:CIRCLE_TAG)) { "1.0.0.0" } else { $env:CIRCLE_TAG.replace("dynamo/","") } 
+                  Build/Patch/Patcher.exe ConnectorDynamo/ConnectorDynamo/dist/ SpeckleConnectorDynamo.dll $version
+            - run: 
+                name: Run Installer
+                command: Build/InnoSetup/ISCC.exe ConnectorDynamo/Installer.iss
+            - persist_to_workspace:
+                root: Build/
+                paths:
+                  - Installers
+      - deploy:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^dynamo.*/
+          requires:
+            - build-connector-dynamo
