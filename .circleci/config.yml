@@ -318,6 +318,4 @@ workflows:
                 root: Build/
                 paths:
                   - Installers
-      - deploy:
-          requires:
-            - build-connector-dynamo
+      - deploy
