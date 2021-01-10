@@ -49,6 +49,9 @@ jobs:
       - checkout
       - jq/install
       - swissknife/trigger-workflows-for-all-modified:
+          base-branch: master
+          use-divergence-point: true
+          run-mode-for-base-branch: run_for_last_commit
           additional-param-map: '{"run_trigger_workflow": false}'
           code-param-name-map: '[
             {"regex": "Objects/.*", "param_name": "run_objects"},
@@ -243,7 +246,8 @@ jobs:
 
 # The main workflows for our monorepo pipeline.
 # The main workflow is called 'ci': It is the workflow responsible of determining which projects to build/test.
-# There should be at least one workflow per project in the monorepo. Each workflow should be run only when a boolean parameter is passed that corresponds to the pattern 'run_{PROJECT_NAME}'. These parameters are set by the 'selective-ci' job.
+# There should be at least one workflow per project in the monorepo. Each workflow should be run only when a boolean parameter is passed that corresponds to the pattern 'run_{PROJECT_NAME}'. 
+# These parameters are set by the 'selective-ci' job.
 workflows:
   # Main workflow. Must be conditioned to the 'run_trigger_workflow' parameter to prevent recursive execution of the job.
   ci:
