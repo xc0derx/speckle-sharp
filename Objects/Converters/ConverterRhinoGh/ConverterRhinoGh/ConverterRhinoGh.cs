@@ -2,13 +2,13 @@
 using Objects.Geometry;
 using Objects.Primitive;
 using Rhino;
+using Rhino.DocObjects;
 using Rhino.Geometry;
 using Speckle.Core.Kits;
 using Speckle.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Arc = Objects.Geometry.Arc;
 using Box = Objects.Geometry.Box;
 using Brep = Objects.Geometry.Brep;
@@ -57,6 +57,26 @@ namespace Objects.Converter.RhinoGh
     {
       switch (@object)
       {
+        case RhinoObject o:
+          var obj = ConvertToSpeckle(o.Geometry);
+          var material = o.GetMaterial(true);
+          if (material != null)
+          {
+            obj["renderMaterial"] = new Objects.Other.RenderMaterial()
+            {
+              diffuse = material.DiffuseColor.ToArgb(),
+              emissive = material.EmissionColor.ToArgb(),
+              opacity = 1 - material.Transparency // nice trick there rhino (NOT)
+            };
+          }
+          else
+          {
+            obj["renderMaterial"] = new Objects.Other.RenderMaterial()
+            {
+              diffuse = Doc.Layers[o.Attributes.LayerIndex].Color.ToArgb()
+            };
+          }
+          return obj;
         case Point3d o:
           return PointToSpeckle(o);
 
@@ -98,7 +118,7 @@ namespace Objects.Converter.RhinoGh
 
         case RH.Polyline o:
           return PolylineToSpeckle(o) as Base;
-        
+
         case NurbsCurve o:
           return CurveToSpeckle(o) as Base;
 
@@ -107,7 +127,7 @@ namespace Objects.Converter.RhinoGh
 
         case PolyCurve o:
           return PolycurveToSpeckle(o);
-        
+
         case RH.Box o:
           return BoxToSpeckle(o);
 

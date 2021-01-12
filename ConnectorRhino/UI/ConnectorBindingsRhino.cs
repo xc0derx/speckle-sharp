@@ -419,7 +419,7 @@ namespace SpeckleRhino
           continue;
         }
 
-        var converted = converter.ConvertToSpeckle(obj.Geometry);
+        var converted = converter.ConvertToSpeckle(obj);
         if (converted == null)
         {
           state.Errors.Add(new Exception($"Failed to find convert object ${applicationId} of type ${obj.Geometry.ObjectType.ToString()}."));
@@ -438,7 +438,7 @@ namespace SpeckleRhino
         }
 
         var layerName = Doc.Layers[obj.Attributes.LayerIndex].FullPath; // sep is ::
-
+        
         if (commitObj[$"@{layerName}"] == null)
         {
           commitObj[$"@{layerName}"] = new List<Base>();
